@@ -2,6 +2,12 @@
 name = "pyneapple-gpufit"
 version = "0.1.0"
 description = "GPU-accelerated solvers for Pyneapple using pygpufit."
+authors = [
+    "Thomas Thiel <thomas.thiel@hhu.de>"
+]
+maintainters = [
+    "Thomas Thiel <thomas.thiel@hhu.de>"
+]
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-or-later" }
