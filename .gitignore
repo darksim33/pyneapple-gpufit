@@ -5,11 +5,13 @@ build/
 dist/
 wheels/
 *.egg-info
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv
 
-
 # uv 
 .python-version
 uv.lock
+
