@@ -1,7 +1,38 @@
 [project]
 name = "pyneapple-gpufit"
 version = "0.1.0"
-description = "Add your description here"
+description = "GPU-accelerated solvers for Pyneapple using pygpufit."
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
+dependencies = [
+    "loguru",
+    "numpy>=2.0",
+    "pyneapple",
+]
+
+[project.entry-points."pyneapple.solvers"]
+gpufit_curvefit = "pyneapple_gpufit:GpuCurveFitSolver"
+gpufit_nnls = "pyneapple_gpufit:GpuNNLSSolver"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyneapple_gpufit"]
+artifacts = [
+    "pyneapple_gpufit/_vendor/pygpufit/Gpufit.dll",
+    "pyneapple_gpufit/_vendor/pygpufit/libGpufit.so",
+]
+
+[tool.uv.sources]
+pyneapple = { git = "https://github.com/darksim33/Pyneapple.git", rev = "c5592fccf63359e185f175495125dfae237f947b" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.14",
+    "pytest-cov>=6.0",
+    "ruff>=0.15",
+]
