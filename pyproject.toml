@@ -36,3 +36,16 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.15",
 ]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--cov=pyneapple_gpufit",
+    "--cov-report=html",
+    "--cov-report=term-missing"
+]
