@@ -1,6 +1,6 @@
 [project]
 name = "pyneapple-gpufit"
-version = "0.1.0"
+version = "0.1.1"
 description = "GPU-accelerated solvers for Pyneapple using pygpufit."
 authors = [
     {name = "Thomas Thiel", email = "thomas.thiel@hhu.de"}
