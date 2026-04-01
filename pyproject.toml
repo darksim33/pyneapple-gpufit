@@ -14,7 +14,7 @@ license = { text = "GPL-3.0-or-later" }
 dependencies = [
     "loguru",
     "numpy>=2.0",
-    "pyneapple",
+    "pyneapple>=2.0.0-beta.1",
 ]
 
 [project.entry-points."pyneapple.solvers"]
@@ -33,7 +33,7 @@ artifacts = [
 ]
 
 [tool.uv.sources]
-pyneapple = { git = "https://github.com/darksim33/Pyneapple.git", rev = "c5592fccf63359e185f175495125dfae237f947b" }
+pyneapple = { git = "https://github.com/darksim33/Pyneapple.git", rev = "v2.0.0-beta.1" }
 
 [dependency-groups]
 dev = [
