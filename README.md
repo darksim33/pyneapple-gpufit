@@ -20,7 +20,7 @@ pip install git+https://github.com/darksim33/pyneapple-gpufit.git
 uv add git+https://github.com/darksim33/pyneapple-gpufit
 ```
 
-The wheel includes `Gpufit.dll` (Windows) and `libGpufit.so` (Linux). Only an up-to-date NVIDIA driver is needed — no CUDA toolkit.
+The wheel includes `Gpufit.dll` (Windows) and `libGpufit.so` (Linux). Only an up-to-date NVIDIA driver is needed — no CUDA toolkit. Currently the supplied libraries are only compiled for x86 systems. For other systems custom compiles are needed. For detailed instructions on how to compile [see](https://github.com/darksim33/GPUfit).
 
 ## Quick start
 
