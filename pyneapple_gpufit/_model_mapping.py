@@ -45,10 +45,7 @@ def resolve_model_id(model) -> tuple[int, list[str]]:
                 "Use CurveFitSolver instead."
             )
         if getattr(model, "fit_s0", False):
-            raise ValueError(
-                "BiExpModel with fit_s0=True is not supported by pygpufit. "
-                "Use CurveFitSolver instead."
-            )
+            return ModelID.BIEXP_S0, ["S0", "f1", "D1", "D2"]
         if getattr(model, "fit_reduced", True):
             return ModelID.BIEXP_RED, ["f1", "D1", "D2"]
         return ModelID.BIEXP, ["f1", "D1", "f2", "D2"]
@@ -60,10 +57,7 @@ def resolve_model_id(model) -> tuple[int, list[str]]:
                 "Use CurveFitSolver instead."
             )
         if getattr(model, "fit_s0", False):
-            raise ValueError(
-                "TriExpModel with fit_s0=True is not supported by pygpufit. "
-                "Use CurveFitSolver instead."
-            )
+            return ModelID.TRIEXP_S0, ["S0", "f1", "D1", "f2", "D2", "f3", "D3"]
         if getattr(model, "fit_reduced", True):
             return ModelID.TRIEXP_RED, ["f1", "D1", "f2", "D2", "D3"]
         return ModelID.TRIEXP, ["f1", "D1", "f2", "D2", "f3", "D3"]
