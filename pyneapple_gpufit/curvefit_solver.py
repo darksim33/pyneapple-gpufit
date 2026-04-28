@@ -85,7 +85,12 @@ class GpuCurveFitSolver(BaseSolver):
             ydata: Signal data, shape ``(n_pixels, n_points)`` or ``(n_points,)``
                 for a single pixel.
             p0: Per-call initial guesses (overrides constructor defaults).
+                Accepts ``dict[str, float]`` or ``np.ndarray`` shaped
+                ``(n_pixels, n_params)`` or ``(n_params, n_pixels)``.
             bounds: Per-call bounds (overrides constructor defaults).
+                Accepts ``dict[str, tuple[float, float]]`` for shared bounds or
+                ``tuple[np.ndarray, np.ndarray]`` for per-pixel bounds, each
+                array shaped ``(n_pixels, n_params)`` or ``(n_params, n_pixels)``.
             pixel_fixed_params: Not supported in v0.1 — raises
                 ``NotImplementedError`` if provided.
             **fit_kwargs: Accepted for API compatibility; ignored.
@@ -205,31 +210,54 @@ class GpuCurveFitSolver(BaseSolver):
         gpufit_param_names,
         n_pixels,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Validate and convert *p0* and *bounds* into gpufit-ready arrays.
+
+        Handles two input formats for each argument:
+
+        - *p0*: ``dict[str, float]`` (one value per parameter, tiled to all
+          pixels) or ``np.ndarray`` shaped ``(n_pixels, n_params)`` or
+          ``(n_params, n_pixels)`` (the latter is transposed).
+        - *bounds*: ``dict[str, tuple[float, float]]`` (shared bounds tiled to
+          all pixels) or ``tuple[np.ndarray, np.ndarray]`` for per-pixel bounds,
+          each array shaped ``(n_pixels, n_params)`` or ``(n_params, n_pixels)``
+          (the latter is transposed).
+
+        Args:
+            p0: Initial parameter guesses.
+            bounds: Parameter bounds as lower/upper pairs.
+            gpufit_param_names: Ordered parameter names expected by the GPU kernel.
+            n_pixels: Number of pixels to fit.
+
+        Returns:
+            ``(initial_parameters, constraints)`` where *initial_parameters* has
+            shape ``(n_pixels, n_params)`` float32, and *constraints* has shape
+            ``(n_pixels, 2 * n_params)`` float32 with values interleaved as
+            ``[lo_0, hi_0, lo_1, hi_1, ...]`` per row.
+
+        Raises:
+            TypeError: If *p0* or *bounds* have an unsupported type.
+            ValueError: If an ndarray *p0* or *bounds* has an incompatible shape.
+        """
 
         n_params = len(gpufit_param_names)
 
         if self._p0_type(p0) == "scalar":
-            # ── effective p0 (per-call override or constructor default) ───────
-            effective_p0 = p0 if p0 is not None else self.p0
-
             # ── build initial_parameters [n_pixels, n_params] float32 ─────────
             p0_vec = np.array(
-                [effective_p0[name] for name in gpufit_param_names], dtype=np.float32
+                [p0[name] for name in gpufit_param_names], dtype=np.float32
             )
             initial_parameters = np.tile(p0_vec, (n_pixels, 1)).astype(
                 np.float32, copy=False
             )
         elif isinstance(p0, np.ndarray):
-            # in contrast to the CurveFitSolver, the p0 needs to be reshaped to [n_pixels, n_params]
+            # in contrast to the CurveFitSolver, the p0 needs to be transposed to [n_pixels, n_params]
             # from [n_params, n_pixels]
 
             # verify shape is either [n_params, n_pixels] or [n_pixels, n_params]
             if p0.shape == (n_pixels, n_params):
                 initial_parameters = p0.astype(np.float32, copy=False)
             elif p0.shape == (n_params, n_pixels):
-                initial_parameters = p0.reshape(n_pixels, -1).astype(
-                    np.float32, copy=False
-                )
+                initial_parameters = p0.T.astype(np.float32)
             else:
                 raise ValueError(
                     "p0 shape must be either [n_params, n_pixels] or [n_pixels, n_params]"
@@ -238,15 +266,13 @@ class GpuCurveFitSolver(BaseSolver):
             raise TypeError(f" {p0} needs to be a dictionary or numpy array.")
 
         if self._bounds_type(bounds) == "scalar":
-            # ── effective bounds (per-call override or constructor default) ────
-            effective_bounds = bounds if bounds is not None else self.bounds
             # ── build constraints [n_pixels, 2*n_params] float32 ───────────────
             lower = np.array(
-                [effective_bounds[name][0] for name in gpufit_param_names],
+                [bounds[name][0] for name in gpufit_param_names],
                 dtype=np.float32,
             )
             upper = np.array(
-                [effective_bounds[name][1] for name in gpufit_param_names],
+                [bounds[name][1] for name in gpufit_param_names],
                 dtype=np.float32,
             )
             # interleave: [lo_0, hi_0, lo_1, hi_1, ...] shape (2*n_params,)
@@ -257,19 +283,20 @@ class GpuCurveFitSolver(BaseSolver):
                 np.float32, copy=False
             )  # shape (n_pixels, 2*n_params)
         elif isinstance(bounds, tuple) and self._bounds_type(bounds) == "ndarray":
-            # in contrast to the CurveFitSolver, the bounds need to be reshaped to [n_pixels, n_params]
+            # in contrast to the CurveFitSolver, the bounds need to be transposed to [n_pixels, n_params]
             # from [n_params, n_pixels]
             lower, upper = bounds
             if lower.shape == (n_pixels, n_params):
-                pass
+                lower = lower.astype(np.float32, copy=False)
+                upper = upper.astype(np.float32, copy=False)
             elif lower.shape == (n_params, n_pixels):
-                lower = lower.reshape(n_pixels, -1)
-                upper = upper.reshape(n_pixels, -1)
+                lower = lower.T.astype(np.float32)
+                upper = upper.T.astype(np.float32)
             else:
                 raise ValueError(
                     f"Bounds shape {lower.shape} does not match expected shape (n_pixels, n_params) or vise versa."
                 )
-            constraints = np.empty((2 * n_params, n_pixels), dtype=np.float32)
+            constraints = np.empty((n_pixels, 2 * n_params), dtype=np.float32)
             constraints[:, 0::2] = lower
             constraints[:, 1::2] = upper
         else:
@@ -280,6 +307,21 @@ class GpuCurveFitSolver(BaseSolver):
         return initial_parameters, constraints
 
     def _p0_type(self, p0: dict[str, Any] | np.ndarray) -> str | None:
+        """Classify the type of *p0* and validate its contents.
+
+        Args:
+            p0: Either a ``dict[str, float | int]`` mapping parameter names to
+                scalar initial guesses, or a ``np.ndarray`` (shape is validated
+                separately in :meth:`_validate_p0_and_bounds`).
+
+        Returns:
+            ``"scalar"`` if *p0* is a dict with numeric values; ``None`` if *p0*
+            is a ``np.ndarray``.
+
+        Raises:
+            TypeError: If *p0* is not a dict or ndarray, if dict keys are not
+                strings, or if dict values are not ``int`` or ``float``.
+        """
         if not isinstance(p0, (dict, np.ndarray)):
             raise TypeError(f" {p0} needs to be a dictionary.")
         _type = None
@@ -295,6 +337,22 @@ class GpuCurveFitSolver(BaseSolver):
     def _bounds_type(
         self, bounds: dict[str, Any] | tuple[np.ndarray, np.ndarray]
     ) -> str | None:
+        """Classify the type of *bounds* and validate its contents.
+
+        Args:
+            bounds: Either a ``dict[str, tuple]`` mapping parameter names to
+                ``(lower, upper)`` float pairs, or a
+                ``tuple[np.ndarray, np.ndarray]`` of per-pixel bound arrays.
+
+        Returns:
+            ``"scalar"`` if *bounds* is a dict with ``(float, float)`` tuples;
+            ``"ndarray"`` if it is a ``tuple[np.ndarray, np.ndarray]`` or a dict
+            with ``(np.ndarray, ...)`` tuples.
+
+        Raises:
+            TypeError: If *bounds* is not a dict or tuple, or if the contents
+                have unexpected types.
+        """
         _type = None
         if isinstance(bounds, dict):
             for key, value in bounds.items():
@@ -313,6 +371,8 @@ class GpuCurveFitSolver(BaseSolver):
         elif isinstance(bounds, tuple):
             if not isinstance(bounds[0], np.ndarray):
                 raise TypeError(f" {bounds[0]} needs to be a numpy array.")
+            if not isinstance(bounds[1], np.ndarray):
+                raise TypeError(f" {bounds[1]} needs to be a numpy array.")
             _type = "ndarray"
         else:
             raise TypeError(f" {bounds} needs to be a dictionary or numpy array.")
