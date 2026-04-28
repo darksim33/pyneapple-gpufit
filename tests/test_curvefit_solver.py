@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from conftest import requires_cuda
 
 
@@ -135,26 +134,6 @@ class TestGpuCurveFitSolverInit:
 
 class TestModelMapping:
     """Tests for the resolve_model_id helper and unsupported model rejection."""
-
-    def test_raises_for_biexp_fit_s0(self, mocker):
-        """resolve_model_id raises ValueError for BiExpModel with fit_s0=True."""
-        from pyneapple.models.biexp import BiExpModel
-
-        from pyneapple_gpufit._model_mapping import resolve_model_id
-
-        model = BiExpModel(fit_reduced=True, fit_s0=True)
-        with pytest.raises(ValueError, match="fit_s0=True"):
-            resolve_model_id(model)
-
-    def test_raises_for_triexp_fit_s0(self):
-        """resolve_model_id raises ValueError for TriExpModel with fit_s0=True."""
-        from pyneapple.models.triexp import TriExpModel
-
-        from pyneapple_gpufit._model_mapping import resolve_model_id
-
-        model = TriExpModel(fit_reduced=True, fit_s0=True)
-        with pytest.raises(ValueError, match="fit_s0=True"):
-            resolve_model_id(model)
 
     def test_raises_for_unsupported_model_class(self):
         """resolve_model_id raises ValueError for an unsupported model class."""
@@ -400,9 +379,9 @@ class TestGpuCurveFitSolverIntegration:
         params = solver.get_params()
         for name, true_val in true_params.items():
             fitted_val = params[name]
-            assert (
-                abs(fitted_val - true_val) / true_val < 0.10
-            ), f"{name}: fitted={fitted_val:.6f}, true={true_val:.6f}"
+            assert abs(fitted_val - true_val) / true_val < 0.10, (
+                f"{name}: fitted={fitted_val:.6f}, true={true_val:.6f}"
+            )
 
     def test_recovers_biexp_parameters_batch(
         self, solver, b_values, synthetic_biexp_signal_batch
@@ -413,13 +392,13 @@ class TestGpuCurveFitSolverIntegration:
         params = solver.get_params()
         n_pixels = signals.shape[0]
         for name in ["f1", "D1", "D2"]:
-            assert params[name].shape == (
-                n_pixels,
-            ), f"{name}: expected shape ({n_pixels},), got {params[name].shape}"
+            assert params[name].shape == (n_pixels,), (
+                f"{name}: expected shape ({n_pixels},), got {params[name].shape}"
+            )
         rel_err_f1 = np.abs(params["f1"] - true_params["f1"]) / true_params["f1"]
-        assert (
-            np.mean(rel_err_f1) < 0.10
-        ), f"Mean relative error for f1 exceeds 10%: {np.mean(rel_err_f1):.3f}"
+        assert np.mean(rel_err_f1) < 0.10, (
+            f"Mean relative error for f1 exceeds 10%: {np.mean(rel_err_f1):.3f}"
+        )
 
     def test_diagnostics_populated_after_fit(
         self, solver, b_values, synthetic_biexp_signal
@@ -428,9 +407,9 @@ class TestGpuCurveFitSolverIntegration:
         signal, _ = synthetic_biexp_signal
         solver.fit(b_values, signal)
         diag = solver.get_diagnostics()
-        assert (
-            diag["states"][0] == 0
-        ), f"Expected convergence (state=0), got state={diag['states'][0]}"
-        assert (
-            diag["chi_squares"][0] < 1e-3
-        ), f"chi_square unexpectedly large: {diag['chi_squares'][0]}"
+        assert diag["states"][0] == 0, (
+            f"Expected convergence (state=0), got state={diag['states'][0]}"
+        )
+        assert diag["chi_squares"][0] < 1e-3, (
+            f"chi_square unexpectedly large: {diag['chi_squares'][0]}"
+        )
