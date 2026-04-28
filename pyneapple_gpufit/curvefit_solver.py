@@ -304,6 +304,8 @@ class GpuCurveFitSolver(BaseSolver):
                 f" {bounds} needs to be a dictionary or tuple of numpy arrays."
             )
 
+        # Convert constraints to contiguous float32 array
+        constraints = np.ascontiguousarray(constraints, dtype=np.float32)
         return initial_parameters, constraints
 
     def _p0_type(self, p0: dict[str, Any] | np.ndarray) -> str | None:
