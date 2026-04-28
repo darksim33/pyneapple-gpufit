@@ -50,8 +50,8 @@ solver.fit(xdata, ydata, p0=None, bounds=None, pixel_fixed_params=None)
 |---|---|---|
 | `xdata` | `np.ndarray` | 1D array of b-values, shape `(n_points,)`. |
 | `ydata` | `np.ndarray` | Signal data — shape `(n_pixels, n_points)` or `(n_points,)` for a single voxel. |
-| `p0` | `dict[str, float] \| None` | Per-call initial guess; overrides the constructor `p0` when provided. |
-| `bounds` | `dict[str, tuple[float, float]] \| None` | Per-call bounds; overrides the constructor `bounds` when provided. |
+| `p0` | `dict[str, float] \| np.ndarray \| None` | Per-call initial guess; overrides the constructor `p0` when provided. Accepts a scalar dict or an ndarray shaped `(n_pixels, n_params)` or `(n_params, n_pixels)`. |
+| `bounds` | `dict[str, tuple[float, float]] \| tuple[np.ndarray, np.ndarray] \| None` | Per-call bounds; overrides the constructor `bounds` when provided. Pass a scalar dict for shared bounds or a `(lower, upper)` tuple of ndarrays shaped `(n_pixels, n_params)` or `(n_params, n_pixels)` for per-pixel bounds. |
 | `pixel_fixed_params` | `dict \| None` | Not supported in v0.1 — raises `NotImplementedError`. |
 
 Returns `self` to allow chaining.
