@@ -1,6 +1,6 @@
 [project]
 name = "pyneapple-gpufit"
-version = "0.1.1"
+version = "0.2.0"
 description = "GPU-accelerated solvers for Pyneapple using pygpufit."
 authors = [
     {name = "Thomas Thiel", email = "thomas.thiel@hhu.de"}
@@ -14,7 +14,7 @@ license = { text = "GPL-3.0-or-later" }
 dependencies = [
     "loguru",
     "numpy>=2.0",
-    "pyneapple>=2.0.0-beta.2",
+    "pyneapple>=2.0.0",
 ]
 
 [project.entry-points."pyneapple.solvers"]
@@ -33,7 +33,7 @@ artifacts = [
 ]
 
 [tool.uv.sources]
-pyneapple = { git = "https://github.com/darksim33/Pyneapple.git", rev = "v2.0.0-beta.2" }
+pyneapple = { git = "https://github.com/darksim33/Pyneapple.git", rev = "v2.0.0" }
 
 [dependency-groups]
 dev = [

@@ -6,6 +6,31 @@ and [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.2.0] — 2026-04-28
+
+### Added
+
+- `fit_s0=True` support for `BiExpModel` and `TriExpModel` via the `BIEXP_S0` and `TRIEXP_S0`
+  GPU kernels. The GPU kernels place `S0` as the last parameter (`["f1", "D1", "D2", "S0"]`
+  and `["f1", "D1", "f2", "D2", "D3", "S0"]`); pyneapple v2.0 may order `S0` differently —
+  see the [API reference](docs/api-reference.md) for details.
+- Per-pixel `bounds` support in `fit()` via `tuple[np.ndarray, np.ndarray]`. Each array may
+  be shaped `(n_pixels, n_params)` or `(n_params, n_pixels)` (transposed automatically).
+- Per-pixel `p0` support in `fit()` via `np.ndarray` shaped `(n_pixels, n_params)` or
+  `(n_params, n_pixels)`.
+- Minimum pyneapple version bumped to `>=2.0.0`.
+
+### Fixed
+
+- Constraint array shape for per-pixel tuple bounds was `(2·n_params, n_pixels)` instead of
+  the gpufit-expected `(n_pixels, 2·n_params)`.
+- Per-pixel `p0` and `bounds` arrays in `(n_params, n_pixels)` layout were incorrectly
+  reshaped (`reshape`) instead of transposed (`.T`), scrambling per-pixel values.
+- `_bounds_type` did not validate the second element of a `(lower, upper)` tuple, allowing
+  non-ndarray values to pass silently.
+
+---
+
 ## [0.1.0] — 2026-03-30
 
 ### Added
