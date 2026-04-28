@@ -94,6 +94,25 @@ def monoexp_bounds() -> dict[str, tuple[float, float]]:
     return {"S0": (0.0, 5000.0), "D": (0.0001, 0.1)}
 
 
+# ── ndarray / per-pixel fixtures ──────────────────────────────────────────────
+
+
+@pytest.fixture
+def biexp_reduced_tuple_bounds_batch() -> tuple[np.ndarray, np.ndarray]:
+    """Per-pixel bounds as (lower, upper) each shaped (10, 3) for a 10-pixel batch."""
+    n_pixels = 10
+    lower = np.tile(np.array([0.0, 0.0001, 0.00001]), (n_pixels, 1)).astype(np.float64)
+    upper = np.tile(np.array([1.0, 0.1, 0.01]), (n_pixels, 1)).astype(np.float64)
+    return lower, upper
+
+
+@pytest.fixture
+def biexp_reduced_ndarray_p0_batch() -> np.ndarray:
+    """Per-pixel p0 as ndarray shaped (10, 3) for a 10-pixel batch."""
+    n_pixels = 10
+    return np.tile(np.array([0.2, 0.01, 0.001]), (n_pixels, 1)).astype(np.float64)
+
+
 # ── synthetic signal fixtures ─────────────────────────────────────────────────
 
 
