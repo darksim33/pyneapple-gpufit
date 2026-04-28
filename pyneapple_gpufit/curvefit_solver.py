@@ -135,7 +135,8 @@ class GpuCurveFitSolver(BaseSolver):
         else:
             raise NotImplementedError("No p0 or bounds provided.")
 
-        # Convert constraints to contiguous float32 array
+        # Convert constraints and initial parameters to contiguous float32 array
+        initial_parameters = np.ascontiguousarray(initial_parameters, dtype=np.float32)
         constraints = np.ascontiguousarray(constraints, dtype=np.float32)
 
         constraint_types = np.full(
