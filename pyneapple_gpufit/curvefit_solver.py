@@ -135,6 +135,9 @@ class GpuCurveFitSolver(BaseSolver):
         else:
             raise NotImplementedError("No p0 or bounds provided.")
 
+        # Convert constraints to contiguous float32 array
+        constraints = np.ascontiguousarray(constraints, dtype=np.float32)
+
         constraint_types = np.full(
             n_params, ConstraintType.LOWER_UPPER, dtype=np.int32
         )  # shape (n_params,)
@@ -304,8 +307,6 @@ class GpuCurveFitSolver(BaseSolver):
                 f" {bounds} needs to be a dictionary or tuple of numpy arrays."
             )
 
-        # Convert constraints to contiguous float32 array
-        constraints = np.ascontiguousarray(constraints, dtype=np.float32)
         return initial_parameters, constraints
 
     def _p0_type(self, p0: dict[str, Any] | np.ndarray) -> str | None:
