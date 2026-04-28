@@ -100,15 +100,19 @@ Placeholder solver registered under the `gpufit_nnls` entry-point key. `fit()` a
 | `MonoExpModel` | — | `MONOEXP` | 100 | `["S0", "D"]` |
 | `BiExpModel` | `fit_reduced=True` | `BIEXP_RED` | 210 | `["f1", "D1", "D2"]` |
 | `BiExpModel` | `fit_reduced=False` | `BIEXP` | 200 | `["f1", "D1", "f2", "D2"]` |
+| `BiExpModel` | `fit_s0=True` | `BIEXP_S0` | — | `["f1", "D1", "D2", "S0"]` |
 | `TriExpModel` | `fit_reduced=True` | `TRIEXP_RED` | 310 | `["f1", "D1", "f2", "D2", "D3"]` |
 | `TriExpModel` | `fit_reduced=False` | `TRIEXP` | 300 | `["f1", "D1", "f2", "D2", "f3", "D3"]` |
+| `TriExpModel` | `fit_s0=True` | `TRIEXP_S0` | — | `["f1", "D1", "f2", "D2", "D3", "S0"]` |
+
+> **pyneapple v2.0 parameter order:** The GPU kernels place `S0` as the **last** parameter for `fit_s0=True` models. pyneapple v2.0 may order `S0` differently. When passing ndarray-style `p0` or `bounds` to `fit()`, columns must follow the GPU kernel order listed above. Dict-style inputs are unaffected — values are looked up by key.
 
 ### Unsupported configurations
 
 `ValueError` is raised for:
 
 - Any model with `model.fixed_params` set — use CPU `CurveFitSolver` instead.
-- `BiExpModel` or `TriExpModel` with `fit_t1=True` or `fit_s0=True`.
+- `BiExpModel` or `TriExpModel` with `fit_t1=True`.
 
 ---
 

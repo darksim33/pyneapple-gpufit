@@ -71,15 +71,19 @@ D2 = [1e-5, 0.01]
 
 ## Supported models
 
-| Pyneapple model | `fit_reduced` | GPU kernel | Parameters |
-|---|---|---|---|
-| `MonoExpModel` | — | `MONOEXP` | `S0`, `D` |
-| `BiExpModel` | `True` (default) | `BIEXP_RED` | `f1`, `D1`, `D2` |
-| `BiExpModel` | `False` | `BIEXP` | `f1`, `D1`, `f2`, `D2` |
-| `TriExpModel` | `True` (default) | `TRIEXP_RED` | `f1`, `D1`, `f2`, `D2`, `D3` |
-| `TriExpModel` | `False` | `TRIEXP` | `f1`, `D1`, `f2`, `D2`, `f3`, `D3` |
+| Pyneapple model | `fit_reduced` | `fit_s0` | GPU kernel | Parameters |
+|---|---|---|---|---|
+| `MonoExpModel` | — | — | `MONOEXP` | `S0`, `D` |
+| `BiExpModel` | `True` (default) | `False` | `BIEXP_RED` | `f1`, `D1`, `D2` |
+| `BiExpModel` | `False` | `False` | `BIEXP` | `f1`, `D1`, `f2`, `D2` |
+| `BiExpModel` | — | `True` | `BIEXP_S0` | `f1`, `D1`, `D2`, `S0` |
+| `TriExpModel` | `True` (default) | `False` | `TRIEXP_RED` | `f1`, `D1`, `f2`, `D2`, `D3` |
+| `TriExpModel` | `False` | `False` | `TRIEXP` | `f1`, `D1`, `f2`, `D2`, `f3`, `D3` |
+| `TriExpModel` | — | `True` | `TRIEXP_S0` | `f1`, `D1`, `f2`, `D2`, `D3`, `S0` |
 
-Models with T1 correction (`fit_t1=True`) or explicit S0 fitting (`fit_s0=True`) are not currently supported — use Pyneapple's CPU `CurveFitSolver` instead.
+> **pyneapple v2.0 note:** For `fit_s0=True` models the GPU kernel places `S0` **last**. If you pass ndarray-style `p0` or `bounds` to `fit()`, column order must match the kernel parameter order above. Dict-style inputs are looked up by key and are unaffected.
+
+Models with T1 correction (`fit_t1=True`) are not currently supported — use Pyneapple's CPU `CurveFitSolver` instead.
 
 ## Citing
 
