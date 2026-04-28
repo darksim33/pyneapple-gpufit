@@ -57,7 +57,7 @@ def resolve_model_id(model) -> tuple[int, list[str]]:
                 "Use CurveFitSolver instead."
             )
         if getattr(model, "fit_s0", False):
-            return ModelID.TRIEXP_S0, ["S0", "f1", "D1", "f2", "D2", "f3", "D3"]
+            return ModelID.TRIEXP_S0, ["S0", "f1", "D1", "f2", "D2", "D3"]
         if getattr(model, "fit_reduced", True):
             return ModelID.TRIEXP_RED, ["f1", "D1", "f2", "D2", "D3"]
         return ModelID.TRIEXP, ["f1", "D1", "f2", "D2", "f3", "D3"]
