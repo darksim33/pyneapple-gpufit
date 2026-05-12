@@ -6,7 +6,7 @@
 
 ## Requirements
 
-- Python ≥ 3.12
+- Python ≥ 3.9
 - An NVIDIA GPU with a CUDA-compatible driver
 - [Pyneapple](https://github.com/darksim33/Pyneapple)
 
