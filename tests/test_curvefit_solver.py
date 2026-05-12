@@ -711,6 +711,301 @@ class TestGpuCurveFitSolverFitNdarrayInputs:
         )
 
 
+# ── pixel_results_ contract ───────────────────────────────────────────────────
+
+
+class TestGpuCurveFitSolverPixelResults:
+    """Tests for pixel_results_ population in GpuCurveFitSolver.fit()."""
+
+    @pytest.fixture
+    def solver(self, biexp_reduced_model, biexp_reduced_p0, biexp_reduced_bounds, mocker):
+        """GpuCurveFitSolver with mocked CUDA check."""
+        mocker.patch("pyneapple_gpufit.curvefit_solver.require_cuda")
+        from pyneapple_gpufit import GpuCurveFitSolver
+
+        return GpuCurveFitSolver(
+            model=biexp_reduced_model,
+            max_iter=100,
+            tol=1e-4,
+            p0=biexp_reduced_p0,
+            bounds=biexp_reduced_bounds,
+        )
+
+    def _fake_fit_result(self, n_pixels: int, state: int = 0):
+        """Return a fake fit_constrained output with all pixels in the given state."""
+        return (
+            np.tile(np.array([0.3, 0.012, 0.0012], dtype=np.float32), (n_pixels, 1)),
+            np.full(n_pixels, state, dtype=np.int32),
+            np.full(n_pixels, 0.001, dtype=np.float32),
+            np.full(n_pixels, 15, dtype=np.int32),
+            0.05,
+        )
+
+    def _fake_fit_result_mixed_states(self, states: list[int]):
+        """Return fake output with per-pixel state codes."""
+        n_pixels = len(states)
+        return (
+            np.tile(np.array([0.3, 0.012, 0.0012], dtype=np.float32), (n_pixels, 1)),
+            np.array(states, dtype=np.int32),
+            np.full(n_pixels, 0.001, dtype=np.float32),
+            np.full(n_pixels, 15, dtype=np.int32),
+            0.05,
+        )
+
+    # ── length ────────────────────────────────────────────────────────────────
+
+    def test_pixel_results_length_single_pixel(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """pixel_results_ contains exactly one entry after a single-pixel fit."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1),
+        )
+        solver.fit(b_values, signal)
+        assert len(solver.pixel_results_) == 1
+
+    def test_pixel_results_length_multi_pixel(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """pixel_results_ contains n_pixels entries after a batch fit."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(n_pixels),
+        )
+        solver.fit(b_values, signals)
+        assert len(solver.pixel_results_) == n_pixels
+
+    # ── params field ──────────────────────────────────────────────────────────
+
+    def test_pixel_results_params_shape(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """Each _PixelFitResult.params is a 1-D array of length n_params."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(n_pixels),
+        )
+        solver.fit(b_values, signals)
+        for pr in solver.pixel_results_:
+            assert pr.params.ndim == 1
+            assert pr.params.shape == (3,), f"Expected (3,), got {pr.params.shape}"
+
+    def test_pixel_results_params_dtype_is_float64(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """_PixelFitResult.params is cast to float64 regardless of Gpufit float32 output."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1),
+        )
+        solver.fit(b_values, signal)
+        assert solver.pixel_results_[0].params.dtype == np.float64
+
+    def test_pixel_results_params_consistent_with_params_dict(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """pixel_results_[i].params values match the corresponding params_ arrays."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        param_names = ["f1", "D1", "D2"]
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(n_pixels),
+        )
+        solver.fit(b_values, signals)
+        params = solver.get_params()
+        for i, pr in enumerate(solver.pixel_results_):
+            for j, name in enumerate(param_names):
+                np.testing.assert_allclose(
+                    pr.params[j],
+                    params[name][i],
+                    rtol=1e-6,
+                    err_msg=f"pixel {i}, param {name}: pixel_results_ and params_ disagree",
+                )
+
+    # ── success / message ─────────────────────────────────────────────────────
+
+    def test_pixel_results_success_true_when_state_zero(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """success=True when Gpufit reports state=0 (converged)."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1, state=0),
+        )
+        solver.fit(b_values, signal)
+        assert solver.pixel_results_[0].success is True
+
+    def test_pixel_results_success_false_when_state_nonzero(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """success=False for every pixel where Gpufit reports state != 0."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        # All pixels set to state=1 (maximum_iterations)
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(n_pixels, state=1),
+        )
+        solver.fit(b_values, signals)
+        for pr in solver.pixel_results_:
+            assert pr.success is False
+
+    def test_pixel_results_success_mixed_states(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """success matches state==0 on a per-pixel basis for mixed state codes."""
+        signals, _ = synthetic_biexp_signal_batch
+        states = [0, 1, 0, 2, 0, 0, 3, 0, 0, 1]  # 10 pixels
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result_mixed_states(states),
+        )
+        solver.fit(b_values, signals)
+        for i, (pr, s) in enumerate(zip(solver.pixel_results_, states)):
+            expected = s == 0
+            assert pr.success is expected, (
+                f"pixel {i}: state={s}, expected success={expected}, got {pr.success}"
+            )
+
+    def test_pixel_results_message_converged(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """message == 'converged' when state=0."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1, state=0),
+        )
+        solver.fit(b_values, signal)
+        assert solver.pixel_results_[0].message == "converged"
+
+    def test_pixel_results_message_maximum_iterations(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """message == 'maximum_iterations' when state=1."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1, state=1),
+        )
+        solver.fit(b_values, signal)
+        assert solver.pixel_results_[0].message == "maximum_iterations"
+
+    # ── n_iterations / residual ───────────────────────────────────────────────
+
+    def test_pixel_results_n_iterations_matches_gpu_output(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """n_iterations for each pixel matches the number_iterations array from Gpufit."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        fake_iters = np.arange(10, 10 + n_pixels, dtype=np.int32)
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=(
+                np.tile(np.array([0.3, 0.012, 0.0012], dtype=np.float32), (n_pixels, 1)),
+                np.zeros(n_pixels, dtype=np.int32),
+                np.full(n_pixels, 0.001, dtype=np.float32),
+                fake_iters,
+                0.05,
+            ),
+        )
+        solver.fit(b_values, signals)
+        for i, pr in enumerate(solver.pixel_results_):
+            assert pr.n_iterations == int(fake_iters[i]), (
+                f"pixel {i}: expected n_iterations={int(fake_iters[i])}, got {pr.n_iterations}"
+            )
+
+    def test_pixel_results_residual_matches_chi_squares(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """residual for each pixel matches the chi_squares value from Gpufit."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        rng = np.random.default_rng(7)
+        fake_chi = rng.uniform(1e-6, 1e-2, size=n_pixels).astype(np.float32)
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=(
+                np.tile(np.array([0.3, 0.012, 0.0012], dtype=np.float32), (n_pixels, 1)),
+                np.zeros(n_pixels, dtype=np.int32),
+                fake_chi,
+                np.full(n_pixels, 15, dtype=np.int32),
+                0.05,
+            ),
+        )
+        solver.fit(b_values, signals)
+        for i, pr in enumerate(solver.pixel_results_):
+            assert pr.residual == pytest.approx(float(fake_chi[i]), rel=1e-5), (
+                f"pixel {i}: expected residual={float(fake_chi[i])}, got {pr.residual}"
+            )
+
+    # ── covariance ────────────────────────────────────────────────────────────
+
+    def test_pixel_results_covariance_is_none(
+        self, solver, b_values, synthetic_biexp_signal_batch, mocker
+    ):
+        """covariance is None for all pixels — Gpufit does not return covariance."""
+        signals, _ = synthetic_biexp_signal_batch
+        n_pixels = signals.shape[0]
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(n_pixels),
+        )
+        solver.fit(b_values, signals)
+        for pr in solver.pixel_results_:
+            assert pr.covariance is None
+
+    # ── reset behaviour ───────────────────────────────────────────────────────
+
+    def test_pixel_results_cleared_on_second_fit(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """A second call to fit() replaces pixel_results_ rather than appending."""
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1),
+        )
+        solver.fit(b_values, signal)
+        solver.fit(b_values, signal)
+        # Should still be 1, not 2
+        assert len(solver.pixel_results_) == 1
+
+    # ── result_ property ─────────────────────────────────────────────────────
+
+    def test_result_property_returns_none_before_fit(self, solver):
+        """result_ is None before fit() has been called."""
+        assert solver.result_ is None
+
+    def test_result_property_returns_fit_result_after_fit(
+        self, solver, b_values, synthetic_biexp_signal, mocker
+    ):
+        """result_ returns a FitResult after a successful fit()."""
+        from pyneapple.result import FitResult
+
+        signal, _ = synthetic_biexp_signal
+        mocker.patch(
+            "pyneapple_gpufit.curvefit_solver.fit_constrained",
+            return_value=self._fake_fit_result(1),
+        )
+        solver.fit(b_values, signal)
+        result = solver.result_
+        assert result is not None
+        assert isinstance(result, FitResult)
+        assert result.n_pixels == 1
+        assert result.solver_name == "GpuCurveFitSolver"
+
+
 # ── GPU integration tests ─────────────────────────────────────────────────────
 
 
