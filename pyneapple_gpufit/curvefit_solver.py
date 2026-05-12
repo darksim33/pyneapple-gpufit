@@ -7,7 +7,16 @@ from typing import Any
 import numpy as np
 from loguru import logger
 from numpy._typing import NDArray
-from pyneapple.solvers.base import BaseSolver
+from pyneapple.solvers.base import BaseSolver, _PixelFitResult
+
+# Gpufit convergence state codes → human-readable messages
+_GPUFIT_STATE_MESSAGES: dict[int, str] = {
+    0: "converged",
+    1: "maximum_iterations",
+    2: "singular_hessian",
+    3: "negative_curvature_mle",
+    4: "gpu_not_ready",
+}
 
 from ._cuda import require_cuda
 from ._model_mapping import resolve_model_id
@@ -204,6 +213,21 @@ class GpuCurveFitSolver(BaseSolver):
             "execution_time": execution_time,
             "n_pixels": n_pixels,
         }
+
+        # ── per-pixel results (pyneapple_solver_plugin contract) ──────────────
+        # Gpufit does not expose per-pixel covariance; all other fields are
+        # available from the batched output arrays.
+        self.pixel_results_ = [
+            _PixelFitResult(
+                params=parameters[i].astype(np.float64),
+                covariance=None,
+                success=bool(states[i] == 0),
+                message=_GPUFIT_STATE_MESSAGES.get(int(states[i])),
+                n_iterations=int(number_iterations[i]),
+                residual=float(chi_squares[i]),
+            )
+            for i in range(n_pixels)
+        ]
 
         return self
 
