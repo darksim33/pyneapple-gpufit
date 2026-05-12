@@ -6,6 +6,27 @@ and [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.3.0] — 2026-05-12
+
+### Added
+
+- `pixel_results_` attribute populated on every `fit()` call, including the single-pixel
+  (`ydata.ndim == 1`) path. Each element is a `_PixelFitResult(params, state, chi_sq,
+  n_iterations, covariance=None)` instance, satisfying the full `BaseSolver` plugin contract.
+- `_GPUFIT_STATE_MESSAGES` module-level constant mapping Gpufit state codes (0–4) to
+  human-readable strings; used when `verbose=True` to log per-state convergence counts.
+- 16 new mocked unit tests in `TestGpuCurveFitSolverPixelResults` covering length,
+  dtypes, state codes, chi-sq, iteration counts, covariance, single-pixel path, and
+  multi-pixel heterogeneous states.
+
+### Removed
+
+- `__version__` string from `pyneapple_gpufit.__init__`. It was stale (`"0.1.0"` while
+  the package was already at `0.2.0`). Use
+  `importlib.metadata.version("pyneapple-gpufit")` to retrieve the version at runtime.
+
+---
+
 ## [0.2.0] — 2026-04-28
 
 ### Added

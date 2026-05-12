@@ -1,6 +1,6 @@
 [project]
 name = "pyneapple-gpufit"
-version = "0.2.0"
+version = "0.3.0"
 description = "GPU-accelerated solvers for Pyneapple using pygpufit."
 authors = [
     {name = "Thomas Thiel", email = "thomas.thiel@hhu.de"}
@@ -9,7 +9,7 @@ maintainters = [
     {name = "Thomas Thiel", email = "thomas.thiel@hhu.de"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 license = { text = "GPL-3.0-or-later" }
 dependencies = [
     "loguru",
